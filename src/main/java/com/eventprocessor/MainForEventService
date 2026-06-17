@@ -1,0 +1,77 @@
+package main.java.com.eventprocessor;
+
+import main.java.com.eventprocessor.metrics.EventLog;
+import main.java.com.eventprocessor.metrics.EventMetrics;
+import main.java.com.eventprocessor.model.Event;
+import main.java.com.eventprocessor.model.ProcessingResult;
+import main.java.com.eventprocessor.processor.EventProcessor;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.*;
+
+public class MainForEventService {
+
+    private static final int THREAD_POOL_SIZE = 4;
+
+    public static void main(String[] args) throws InterruptedException {
+
+        Thread.setDefaultUncaughtExceptionHandler((t, e) ->
+                System.err.printf("[UNCAUGHT] Thread '%s' threw: %s%n", t.getName(), e.getMessage())
+        );
+
+        List<Event> incomingEvents = List.of(
+                new Event("E001", Event.EventType.PRICE_UPDATE,       "BTC/USD: 65000"),
+                new Event("E002", Event.EventType.TRADE_CONFIRMATION, "Buy 10 BTC @ 65000"),
+                new Event("E003", Event.EventType.ALERT,              "Volatility spike detected"),
+                new Event("E004", Event.EventType.PRICE_UPDATE,       "ETH/USD: 3200"),
+                new Event("E005", Event.EventType.TRADE_CONFIRMATION, "Sell 5 ETH @ 3200"),
+                new Event("E006", Event.EventType.PRICE_UPDATE,       "SOL/USD: 145"),
+                new Event("E007", Event.EventType.ALERT,              "Circuit breaker triggered"),
+                new Event("E008", Event.EventType.TRADE_CONFIRMATION, "Buy 100 SOL @ 145"),
+                new Event("E009", Event.EventType.PRICE_UPDATE,       "ADA/USD: 0.45"),
+                new Event("E010", Event.EventType.ALERT,              "Daily limit approaching")
+        );
+
+        EventMetrics metrics = new EventMetrics();
+        EventLog eventLog = new EventLog();
+
+        ExecutorService pool = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
+
+        long startTime = System.currentTimeMillis();
+
+        List<Future<ProcessingResult>> futures = new ArrayList<>();
+
+        for (int i = 0; i < incomingEvents.size(); i++) {
+            EventProcessor processor = new EventProcessor(
+                    i + 1, incomingEvents.get(i), metrics, eventLog
+            );
+            Future<ProcessingResult> future = pool.submit(processor);
+            futures.add(future);
+        }
+
+        List<ProcessingResult> results = new ArrayList<>();
+
+        for (int i = 0; i < futures.size(); i++) {
+            try {
+                ProcessingResult result = futures.get(i).get();
+                results.add(result);
+            } catch (ExecutionException e) {
+                System.err.printf("Task %d failed: %s%n", i + 1, e.getCause().getMessage());
+            }
+        }
+
+        pool.shutdown();
+        boolean cleanExit = pool.awaitTermination(10, TimeUnit.SECONDS);
+        if (!cleanExit) {
+            System.err.println("Pool did not terminate cleanly — forcing shutdown");
+            pool.shutdownNow();
+        }
+
+        long elapsed = System.currentTimeMillis() - startTime;
+
+        metrics.printSummary();
+        System.out.printf("All events processed in %dms%n", elapsed);
+        eventLog.print();
+    }
+}
