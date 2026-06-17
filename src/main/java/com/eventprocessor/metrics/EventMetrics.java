@@ -1,4 +1,4 @@
-package main.java.com.eventprocessor.metrics;
+package com.eventprocessor.metrics;
 
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;

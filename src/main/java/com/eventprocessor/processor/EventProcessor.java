@@ -1,9 +1,9 @@
-package main.java.com.eventprocessor.processor;
+package com.eventprocessor.processor;
 
-import main.java.com.eventprocessor.metrics.EventLog;
-import main.java.com.eventprocessor.metrics.EventMetrics;
-import main.java.com.eventprocessor.model.Event;
-import main.java.com.eventprocessor.model.ProcessingResult;
+import com.eventprocessor.metrics.EventLog;
+import com.eventprocessor.metrics.EventMetrics;
+import com.eventprocessor.model.Event;
+import com.eventprocessor.model.ProcessingResult;
 
 import java.util.concurrent.Callable;
 

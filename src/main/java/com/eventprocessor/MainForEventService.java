@@ -1,10 +1,10 @@
-package main.java.com.eventprocessor;
+package com.eventprocessor;
 
-import main.java.com.eventprocessor.metrics.EventLog;
-import main.java.com.eventprocessor.metrics.EventMetrics;
-import main.java.com.eventprocessor.model.Event;
-import main.java.com.eventprocessor.model.ProcessingResult;
-import main.java.com.eventprocessor.processor.EventProcessor;
+import com.eventprocessor.metrics.EventLog;
+import com.eventprocessor.metrics.EventMetrics;
+import com.eventprocessor.model.Event;
+import com.eventprocessor.model.ProcessingResult;
+import com.eventprocessor.processor.EventProcessor;
 
 import java.util.ArrayList;
 import java.util.List;

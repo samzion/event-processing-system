@@ -1,4 +1,4 @@
-package main.java.com.eventprocessor.model;
+package com.eventprocessor.model;
 
 public record ProcessingResult(
         String eventId,

@@ -1,4 +1,4 @@
-package main.java.com.eventprocessor.model;
+package com.eventprocessor.model;
 
 public class Event {
 
