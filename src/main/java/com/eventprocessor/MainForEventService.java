@@ -39,7 +39,7 @@ public class MainForEventService {
         EventLog eventLog = new EventLog();
         EventTypeCounter eventTypeCounter = new EventTypeCounter();
 
-        ExecutorService pool = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
+        ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor();
 
         long startTime = System.currentTimeMillis();
 
