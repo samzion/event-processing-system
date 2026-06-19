@@ -2,6 +2,7 @@ package com.eventprocessor.processor;
 
 import com.eventprocessor.metrics.EventLog;
 import com.eventprocessor.metrics.EventMetrics;
+import com.eventprocessor.metrics.EventTypeCounter;
 import com.eventprocessor.model.Event;
 import com.eventprocessor.model.ProcessingResult;
 
@@ -13,12 +14,14 @@ public class EventProcessor implements Callable<ProcessingResult> {
     private final int processorId;
     private final EventMetrics metrics;
     private final EventLog eventLog;
+    private final EventTypeCounter eventTypeCounter;
 
-    public EventProcessor(int processorId, Event event, EventMetrics metrics, EventLog eventLog) {
+    public EventProcessor(int processorId, Event event, EventMetrics metrics, EventLog eventLog, EventTypeCounter eventTypeCounter) {
         this.processorId = processorId;
         this.event = event;
         this.metrics = metrics;
         this.eventLog = eventLog;
+        this.eventTypeCounter = eventTypeCounter;
     }
 
     @Override
@@ -55,6 +58,7 @@ public class EventProcessor implements Callable<ProcessingResult> {
 
         long duration = System.currentTimeMillis() - startTimeMs;
         metrics.recordSuccess(duration);
+        eventTypeCounter.record(event.getType().name(), event.getPayload());
 
         String logEntry = String.format("ProcessingResult[eventId=%s, processorId=%d, durationMs=%d, success=true]",
                 event.getId(), processorId, duration);

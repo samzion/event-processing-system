@@ -2,6 +2,7 @@ package com.eventprocessor;
 
 import com.eventprocessor.metrics.EventLog;
 import com.eventprocessor.metrics.EventMetrics;
+import com.eventprocessor.metrics.EventTypeCounter;
 import com.eventprocessor.model.Event;
 import com.eventprocessor.model.ProcessingResult;
 import com.eventprocessor.processor.EventProcessor;
@@ -35,6 +36,7 @@ public class MainForEventService {
 
         EventMetrics metrics = new EventMetrics();
         EventLog eventLog = new EventLog();
+        EventTypeCounter eventTypeCounter = new EventTypeCounter();
 
         ExecutorService pool = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
 
@@ -44,7 +46,7 @@ public class MainForEventService {
 
         for (int i = 0; i < incomingEvents.size(); i++) {
             EventProcessor processor = new EventProcessor(
-                    i + 1, incomingEvents.get(i), metrics, eventLog
+                    i + 1, incomingEvents.get(i), metrics, eventLog, eventTypeCounter
             );
             Future<ProcessingResult> future = pool.submit(processor);
             futures.add(future);
@@ -71,7 +73,9 @@ public class MainForEventService {
         long elapsed = System.currentTimeMillis() - startTime;
 
         metrics.printSummary();
+
         System.out.printf("All events processed in %dms%n", elapsed);
         eventLog.print();
+        eventTypeCounter.printCounts();
     }
 }
