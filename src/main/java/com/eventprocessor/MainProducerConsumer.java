@@ -41,7 +41,21 @@ public class MainProducerConsumer {
         EventTypeCounter eventTypeCounter = new EventTypeCounter();
         AtomicInteger processorIdCounter = new AtomicInteger(0);
 
-        ExecutorService executor = Executors.newFixedThreadPool(CONSUMER_COUNT + 1);
+        int cores = Runtime.getRuntime().availableProcessors();
+
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(
+                CONSUMER_COUNT +1,                      // core — always keep these alive
+                CONSUMER_COUNT + 3,                  // max — allow 2 extra under spike
+                30L, TimeUnit.SECONDS,               // idle extra threads die after 30s
+                new ArrayBlockingQueue<>(10),        // bounded queue — backpressure enabled
+                r -> {                               // named thread factory
+                    Thread t = new Thread(r);
+                    t.setName("event-worker-" + t.getId());
+                    t.setDaemon(false);
+                    return t;
+                },
+                new ThreadPoolExecutor.CallerRunsPolicy() // producer slows down when overwhelmed
+        );
 
         long startTime = System.currentTimeMillis();
 
@@ -56,6 +70,20 @@ public class MainProducerConsumer {
 
         executor.shutdown();
         executor.awaitTermination(30, TimeUnit.SECONDS);
+
+        // Monitor pool state — this is what you'd expose to a metrics endpoint in production
+        System.out.printf("Pool: core=%d max=%d queue-capacity=%d%n",
+                executor.getCorePoolSize(),
+                executor.getMaximumPoolSize(),
+                ((ArrayBlockingQueue<?>) executor.getQueue()).remainingCapacity()
+                        + executor.getQueue().size()
+        );
+
+
+        System.out.printf("%nPool stats:%n");
+        System.out.printf("  Completed tasks : %d%n", executor.getCompletedTaskCount());
+        System.out.printf("  Largest pool    : %d%n", executor.getLargestPoolSize());
+        System.out.printf("  Total tasks     : %d%n", executor.getTaskCount());
 
         long elapsed = System.currentTimeMillis() - startTime;
 
