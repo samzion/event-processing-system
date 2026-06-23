@@ -29,7 +29,7 @@ Nigeria currently spends approximately $850 million annually on offshore data ho
 
 Most concurrency tutorials teach concepts in isolation. This project builds a single evolving system — a real-time financial event processing pipeline — and upgrades it phase by phase. Each upgrade solves a concrete problem introduced by the previous phase. The result is a codebase that demonstrates not just what each tool does, but *why* it exists and what breaks without it.
 
-Every phase is anchored to a real Nigerian fintech scenario. The problems are not academic.
+Every phase is anchored to a real Nigerian fintech scenario using **KoboSend** — a hypothetical Nigerian mobile payments platform — as the domain context. The problems are not academic.
 
 ---
 
@@ -50,7 +50,7 @@ Each phase evolves how these events are produced, processed, tracked, and coordi
 ## Phase Breakdown
 
 ### Phase 1 — Raw Java Threads
-**Fintech context:** Every USSD request spawns a thread. At peak load on salary day, millions of Nigerians hitting `*242#` simultaneously. Raw threads collapse.
+**Fintech context:** Every USSD request at KoboSend spawns a thread. At peak load on salary day, millions of Nigerians hitting `*737#` simultaneously. Raw threads collapse.
 
 One thread per event. 10 events → 10 threads created and destroyed.
 
@@ -64,7 +64,7 @@ One thread per event. 10 events → 10 threads created and destroyed.
 ---
 
 ### Phase 2 — ExecutorService
-**Fintech context:** Paga's payment gateway — fixed thread pool sized to DB connection limit.
+**Fintech context:** KoboSend's payment gateway — fixed thread pool sized to DB connection limit.
 
 Fixed thread pool of 4 workers. Tasks queue when all threads are busy. Threads reused across tasks.
 
@@ -78,7 +78,7 @@ Fixed thread pool of 4 workers. Tasks queue when all threads are busy. Threads r
 ---
 
 ### Phase 3 — `synchronized`
-**Fintech context:** Paga wallet balance — two concurrent debits without synchronization cause lost updates. Both threads read ₦5,000, both deduct ₦3,000, both write ₦2,000. Customer loses ₦3,000. Paga loses ₦3,000.
+**Fintech context:** KoboSend wallet balance — two concurrent debits without synchronization cause lost updates. Both threads read ₦5,000, both deduct ₦3,000, both write ₦2,000. Customer loses ₦3,000. KoboSend loses ₦3,000.
 
 Shared `EventMetrics` object updated concurrently by all worker threads.
 
@@ -92,7 +92,7 @@ Shared `EventMetrics` object updated concurrently by all worker threads.
 ---
 
 ### Phase 4 — Atomic Classes
-**Fintech context:** Transaction counters, daily limit trackers, fee accumulators — single-variable updates that need correctness without lock overhead.
+**Fintech context:** KoboSend transaction counters, daily limit trackers, fee accumulators — single-variable updates that need correctness without lock overhead.
 
 Replaced `synchronized` counters in `EventMetrics` with `AtomicInteger` and `AtomicLong`.
 
@@ -105,7 +105,7 @@ Replaced `synchronized` counters in `EventMetrics` with `AtomicInteger` and `Ato
 ---
 
 ### Phase 5 — ConcurrentHashMap
-**Fintech context:** Real-time NGN/USD exchange rate cache — multiple threads reading rates while a background thread updates them.
+**Fintech context:** KoboSend real-time NGN/USD exchange rate cache — multiple threads reading rates while a background thread updates them.
 
 Added `EventTypeCounter` — concurrent per-type event counting and last-payload tracking.
 
@@ -117,7 +117,7 @@ Added `EventTypeCounter` — concurrent per-type event counting and last-payload
 ---
 
 ### Phase 6 — CompletableFuture
-**Fintech context:** Processing a Paga transfer — validate sender, validate receiver, check fraud score, check daily limits — all four run concurrently, results combined before debiting.
+**Fintech context:** Processing a KoboSend transfer — validate sender, validate receiver, check fraud score, check daily limits — all four run concurrently, results combined before debiting.
 
 Replaced blocking `Future.get()` collection loop with a declarative async pipeline per event.
 
@@ -131,7 +131,7 @@ Replaced blocking `Future.get()` collection loop with a declarative async pipeli
 ---
 
 ### Phase 7 — Virtual Threads (Java 21, JEP 444)
-**Fintech context:** Paga's Spring Boot API handling thousands of concurrent USSD sessions without a massive platform thread pool.
+**Fintech context:** KoboSend's Spring Boot API handling thousands of concurrent USSD sessions without a massive platform thread pool.
 
 Replaced `Executors.newFixedThreadPool(4)` with `Executors.newVirtualThreadPerTaskExecutor()`.
 
@@ -144,7 +144,7 @@ Replaced `Executors.newFixedThreadPool(4)` with `Executors.newVirtualThreadPerTa
 ---
 
 ### Phase 8 — Producer-Consumer Pattern
-**Fintech context:** Paga's settlement engine — API layer produces transfer requests at unpredictable rates, settlement processes at its own pace. Salary-day spike absorbed by the queue.
+**Fintech context:** KoboSend's settlement engine — API layer produces transfer requests at unpredictable rates, settlement processes at its own pace. Salary-day spike absorbed by the queue.
 
 Decoupled event ingestion from processing using `BlockingQueue`.
 
@@ -158,7 +158,7 @@ Decoupled event ingestion from processing using `BlockingQueue`.
 ---
 
 ### Phase 9 — ThreadPoolExecutor Deep Dive
-**Fintech context:** Paga's settlement pool — explicitly sized to 20 matching the DB connection pool limit. `CallerRunsPolicy` slows ingestion when settlement falls behind.
+**Fintech context:** KoboSend's settlement pool — explicitly sized to match the DB connection pool limit. `CallerRunsPolicy` slows ingestion when settlement falls behind.
 
 Replaced factory method with explicit `ThreadPoolExecutor` construction.
 
@@ -171,7 +171,7 @@ Replaced factory method with explicit `ThreadPoolExecutor` construction.
 ---
 
 ### Phase 10 — Event-Driven Architecture
-**Fintech context:** Paga transfer completion — SMS receipt, ledger bookkeeping, fraud model update, and analytics dashboard all triggered by one event. Transfer Service has zero knowledge of any downstream consumer.
+**Fintech context:** KoboSend transfer completion — SMS receipt, ledger bookkeeping, fraud model update, and analytics dashboard all triggered by one event. Transfer Service has zero knowledge of any downstream consumer.
 
 In-process event bus decoupling emitter from subscribers.
 
@@ -185,7 +185,7 @@ In-process event bus decoupling emitter from subscribers.
 ---
 
 ### Phase 11 — Kafka Simulation
-**Fintech context:** Paga's audit trail — every transaction published to a persistent log. Compliance service, fraud detection, and analytics all consume independently. Regulators can demand replay of any historical period.
+**Fintech context:** KoboSend's audit trail — every transaction published to a persistent log. Compliance, fraud detection, and analytics all consume independently. Regulators can demand replay of any historical period.
 
 Simulated Apache Kafka topic with persistent log, offset tracking, and replay.
 
@@ -199,7 +199,7 @@ Simulated Apache Kafka topic with persistent log, offset tracking, and replay.
 ---
 
 ### Phase 12 — Distributed Systems Foundations
-**Fintech context:** Paga's wallet service and settlement service on separate servers. Network dies after debit, before credit. Money lost. The distributed transaction problem.
+**Fintech context:** KoboSend's wallet service and settlement service on separate servers. Network dies after debit, before credit. Money lost. The distributed transaction problem.
 
 Idempotent transfer service solving the duplicate-processing problem under concurrent retries.
 
